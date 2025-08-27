@@ -1,30 +1,44 @@
 package com.troxell.numbers;
 
-public final class Complex implements MatNumber{
+/**
+ * <code>Complex</code>: A class representing a complex number of the form
+ * <code>a + bi/code>.
+ */
+public final class Complex implements MatNumber {
 
+    /**
+     * <code>double</code>: The real component of this <code>Complex</code>
+     * instance.
+     */
     private final double re;
+
+    /**
+     * <code>double</code>: The imaginary component of this <code>Complex</code>
+     * instance.
+     */
     private final double im;
 
+    /**
+     * Creates a new instance of the <code>Complex</code> class.
+     * 
+     * @param re The real component of this <code>Complex</code> instance.
+     * @param im The imaginary component of this <code>Complex</code> instance.
+     */
     public Complex(double re, double im) {
 
         this.re = re;
         this.im = im;
     }
 
-    public Complex(MatNumber num) {
-
-        this(num.real(), num.imag());
-    }
-
     @Override
     public final Complex add(MatNumber b) {
-        
+
         return new Complex(re + b.real(), im + b.imag());
     }
 
     @Override
     public final Complex subtract(MatNumber b) {
-        
+
         return new Complex(re - b.real(), im - b.imag());
     }
 
@@ -65,19 +79,19 @@ public final class Complex implements MatNumber{
 
     @Override
     public final double real() {
-        
+
         return re;
     }
 
     @Override
     public final double imag() {
-        
+
         return im;
     }
 
     @Override
     public final double abs() {
-        
+
         return Math.sqrt(re * re + im * im);
     }
 
@@ -86,6 +100,18 @@ public final class Complex implements MatNumber{
         return new Complex(re, -im);
     }
 
+    /**
+     * Retrieves the string representation of this <code>Complex</code> instance.
+     * 
+     * @return <code>String</code>: The string representation of this
+     *         <code>Complex</code> instance in one of the following forms:
+     *         <ul>
+     *         <li><code>a</code></li>
+     *         <li><code>b*i</code></li>
+     *         <li><code>a + b*i</code></li>
+     *         <li><code>a - b*i</code></li>
+     *         </ul>
+     */
     @Override
     public final String toString() {
 

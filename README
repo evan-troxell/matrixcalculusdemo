@@ -1,0 +1,9 @@
+================= Matrix Calculus =================
+  - A branch of mathematics in which polynomial functions are described as vectors (or tensors) of variable size and function calls are inner (dot) products between function vectors and variable vectors.
+
+Let f = [a0, a1, a2, a3, ... , an] (where f(x) = a0 + a1x + a2x^2 + a3x^3 + ... + anx^n)
+Let X = [1, x, x^2, x^3, ... , x^n]
+    f(x) = f•X = a0 + a1x + a2x^2 + a3x^3 + ... + anx^n
+
+
+This project is a rudimentary representation of matrix calculus principles involving function and variable vectors/tensors, transformations, and applications involving complex numbers. This project takes advantage of the Calculus principle of Taylor series approximations of single-variable (or multi-variate) functions to generate polynomial coefficients, which can then be modified and manipulated to represent modifications to the original function. This behavior is applicable for a range of both simple & transcendental functions like 1/(1 - x), exp(x), trigonometric & inverse functions, hyperbolic & inverse functions, and generalization functions like the Gamma (Γ) function or the Harmonic (H) function. This generalization allows for other behaviors as well, such as polynomial addition, subtraction, multiplication, and - to a much more limited extent - division.
