@@ -1,3 +1,9 @@
 /Users/evantroxell/Desktop/matrixcalculusdemo/src/main/java/com/troxell/Main.java
-/Users/evantroxell/Desktop/matrixcalculusdemo/src/main/java/com/troxell/Matrix.java
-/Users/evantroxell/Desktop/matrixcalculusdemo/src/main/java/com/troxell/Vector.java
+/Users/evantroxell/Desktop/matrixcalculusdemo/src/main/java/com/troxell/functions/MatFunction.java
+/Users/evantroxell/Desktop/matrixcalculusdemo/src/main/java/com/troxell/functions/TensorFunction.java
+/Users/evantroxell/Desktop/matrixcalculusdemo/src/main/java/com/troxell/mat/Matrix.java
+/Users/evantroxell/Desktop/matrixcalculusdemo/src/main/java/com/troxell/mat/Tensor.java
+/Users/evantroxell/Desktop/matrixcalculusdemo/src/main/java/com/troxell/mat/Vector.java
+/Users/evantroxell/Desktop/matrixcalculusdemo/src/main/java/com/troxell/numbers/Complex.java
+/Users/evantroxell/Desktop/matrixcalculusdemo/src/main/java/com/troxell/numbers/MatNumber.java
+/Users/evantroxell/Desktop/matrixcalculusdemo/src/main/java/com/troxell/numbers/Real.java
