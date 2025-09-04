@@ -37,6 +37,6 @@ public final class Main {
 
         // dw/dt
         TensorFunction dw_dt = w.totalDiffer(3, x, y, z);
-        System.out.println(dw_dt.apply(1, 2, 3, 43));
+        System.out.println(dw_dt.apply(114, 22, 342, 43));
     }
 }

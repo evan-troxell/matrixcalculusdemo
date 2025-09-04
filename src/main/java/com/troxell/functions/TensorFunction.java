@@ -188,10 +188,24 @@ public class TensorFunction {
     public final MatNumber apply(Vector args) {
 
         int[] dimensions = coeffs.getDimensions();
+        int length = dimensions.length;
 
-        if (args.getSize() != dimensions.length) {
+        // If there are not enough provided arguments, return null.
+        if (args.getSize() < length) {
 
             return null;
+        }
+
+        // If there are too many provided arguments, trim them.
+        if (args.getSize() > length) {
+
+            MatNumber[] newArgs = new MatNumber[length];
+            for (int i = 0; i < length; i++) {
+
+                newArgs[i] = args.get(i);
+            }
+
+            args = new Vector(newArgs);
         }
 
         Tensor v = param(args, dimensions);
@@ -352,11 +366,14 @@ public class TensorFunction {
      * @param dim         <code>int</code>: The current dimension.
      * @param first       <code>Tensor</code>: The first tensor.
      * @param indexOld    <code>int</code>: The current index in the first tensor.
-     * @param indCoeffOld <code>int</cdoe>: The index coefficient for the first tensor.
-     * @param newDims <code>int[]</code>: The dimensions of the new tensor.
+     * @param indCoeffOld <code>int</code>: The index coefficient for the first
+     *                    tensor.
+     * @param newDims     <code>int[]</code>: The dimensions of the new tensor.
      * @param indexNew    <code>int</code>: The current index in the new tensor.
-     * @param indCoeffNew <code>int</cdoe>: The index coefficient for the new tensor.
-     * @param p <code>MultiplyConsumer</code>: The consumer to apply at the end of
+     * @param indCoeffNew <code>int</code>: The index coefficient for the new
+     *                    tensor.
+     * @param p           <code>MultiplyConsumer</code>: The consumer to apply at
+     *                    the end of
      *                    iteration in the first tensor.
      */
     private static void multiplyIterateFirst(int dim, Tensor first, int indexOld, int indCoeffOld, int[] newDims,
@@ -391,11 +408,14 @@ public class TensorFunction {
      *                    tensor.
      * @param second      <code>Tensor</code>: The second tensor.
      * @param indexOld    <code>int</code>: The current index in the second tensor.
-     * @param indCoeffOld <code>int</cdoe>: The index coefficient for the second tensor.
-     * @param newDims <code>int[]</code>: The dimensions of the new tensor.
+     * @param indCoeffOld <code>int</code>: The index coefficient for the second
+     *                    tensor.
+     * @param newDims     <code>int[]</code>: The dimensions of the new tensor.
      * @param indexNew    <code>int</code>: The current index in the new tensor.
-     * @param indCoeffNew <code>int</cdoe>: The index coefficient for the new tensor.
-     * @param data <code>MatNumber[]</code>: The data array of the new tensor.
+     * @param indCoeffNew <code>int</code>: The index coefficient for the new
+     *                    tensor.
+     * @param data        <code>MatNumber[]</code>: The data array of the new
+     *                    tensor.
      */
     private static void multiplyIterateSecond(int dim, MatNumber coeff, Tensor second, int indexOld, int indCoeffOld,
             int[] newDims, int indexNew, int indCoeffNew, MatNumber[] data) {
@@ -450,9 +470,18 @@ public class TensorFunction {
         return new TensorFunction(t);
     }
 
-    // public final TensorFunction divide(TensorFunction function) {
+    /**
+     * Computes the quotient between this <code>TensorFunction</code> instance and
+     * another.
+     * 
+     * @param function <code>TensorFunction</code>: The function to divide by.
+     * @return <code>TensorFunction</code>: The calculated function.
+     */
+    public final TensorFunction divide(TensorFunction function) {
 
-    // }
+        // TODO: Implement divison.
+        return null;
+    }
 
     /**
      * Calculates the composition of this <code>TensorFunction</code> instance and
@@ -601,11 +630,14 @@ public class TensorFunction {
      *                    tensor.
      * @param second      <code>Tensor</code>: The second tensor.
      * @param indexOld    <code>int</code>: The current index in the second tensor.
-     * @param indCoeffOld <code>int</cdoe>: The index coefficient for the second tensor.
-     * @param newDims <code>int[]</code>: The dimensions of the new tensor.
+     * @param indCoeffOld <code>int</code>: The index coefficient for the second
+     *                    tensor.
+     * @param newDims     <code>int[]</code>: The dimensions of the new tensor.
      * @param indexNew    <code>int</code>: The current index in the new tensor.
-     * @param indCoeffNew <code>int</cdoe>: The index coefficient for the new tensor.
-     * @param data <code>MatNumber[]</code>: The data array of the new tensor.
+     * @param indCoeffNew <code>int</code>: The index coefficient for the new
+     *                    tensor.
+     * @param data        <code>MatNumber[]</code>: The data array of the new
+     *                    tensor.
      */
     private static void composeSecondIterate(int dim, MatNumber coeff, Tensor second, int indexOld, int indCoeffOld,
             int[] newDims, int indexNew, int indCoeffNew, MatNumber[] data) {
@@ -628,10 +660,10 @@ public class TensorFunction {
 
     /**
      * Calculates the nth derivative of this <code>TensorFunction</code> instance
-     * along the given mode
+     * with respect to a given mode.
      * 
-     * @param dim <code>int</code>: The mode to differentiate along.
-     * @param n   <code>int</code>: The order of the derivative.
+     * @param mode <code>int</code>: The mode to differentiate along.
+     * @param n    <code>int</code>: The order of the derivative.
      * @return <code>TensorFunction</code>: The calculated function.
      */
     public final TensorFunction differ(int mode, int n) {
@@ -649,14 +681,29 @@ public class TensorFunction {
         return new TensorFunction(Tensor.modeProduct(D, coeffs, mode));
     }
 
-    public final TensorFunction totalDiffer(int mode, TensorFunction... vars) {
+    /**
+     * Computes the total derivative of this <code>TensorFunction</code> instance,
+     * composed of the provided inner (auxilary) functions, with respect to a given
+     * mode.
+     * 
+     * @param mode  <code>int</code>: The mode to differentiate along. This mode may
+     *              be an inner function.
+     * @param inner <code>TensorFunction...</code>: The inner (auxilary) functions,
+     *              where the index corresponds to a given mode (variable index).
+     *              Inner functions which are left as <code>null</code> values or
+     *              which are excluded from the list are treated as independent
+     *              variables.
+     * @return <code>TensorFunction</code>: The calculated function, or the total
+     *         derivative of this <code>TensorFunction</code> instance.
+     */
+    public final TensorFunction totalDiffer(int mode, TensorFunction... inner) {
 
         List<Set<Integer>> dependencies = new ArrayList<>();
 
         // Iterate through all input functions to find dependency hierarchy.
-        for (int i = 0; i < vars.length; i++) {
+        for (int i = 0; i < inner.length; i++) {
 
-            TensorFunction func = vars[i];
+            TensorFunction func = inner[i];
             HashSet<Integer> deps = new HashSet<>();
 
             // If the function is null, it is an independent variable.
@@ -678,7 +725,7 @@ public class TensorFunction {
         HashSet<Integer> validated = new HashSet<>();
         HashSet<Integer> seen = new HashSet<>();
 
-        for (int i = 0; i < vars.length; i++) {
+        for (int i = 0; i < inner.length; i++) {
 
             if (!validateModeDependencies(i, dependencies, validated, seen)) {
 
@@ -686,10 +733,31 @@ public class TensorFunction {
             }
         }
 
+        for (int i = dependencies.size(); i <= mode; i++) {
+
+            dependencies.add(new HashSet<>());
+        }
+
         HashMap<Integer, Map<Integer, TensorFunction>> computed = new HashMap<>();
-        return differChildren(this, mode, vars, dependencies, computed);
+        return totalDiffer(mode, inner, dependencies, computed);
     }
 
+    /**
+     * Validates the dependency hierarchy at a given mode.
+     * 
+     * @param mode         <code>int</code>: The mode to validate.
+     * @param dependencies <code>List&lt;Set&lt;Integer&gt;&gt;</code>: The list of
+     *                     dependencies for each mode. Every set in the list
+     *                     describes the list of functions that the mode of that
+     *                     index is dependent on.
+     * @param validated    <code>Set&lt;Integer&gt;</code>: The set of modes which
+     *                     have already been validated.
+     * @param seen         <code>Set&lt;Integer&gt;</code>: The set of modes which
+     *                     have already been traced along in the current validation
+     *                     path. If a mode is repeated in this set, a cycle has been
+     *                     detected.
+     * @return <code>boolean</code>: Whether or not the mode hierarchy is valid.
+     */
     private static boolean validateModeDependencies(int mode, List<Set<Integer>> dependencies, Set<Integer> validated,
             Set<Integer> seen) {
 
@@ -746,7 +814,74 @@ public class TensorFunction {
         return true;
     }
 
-    private static TensorFunction totalDifferIterate(int num, int denom, TensorFunction[] vars,
+    /**
+     * Computes the total derivative of this <code>TensorFunction</code> instance,
+     * composed of the provided inner (auxilary) functions, with respect to a given
+     * mode. This method assumes that the dependency hierarchy has already been
+     * validated and relies on a cache of previously computed derivatives.
+     * 
+     * @param mode         <code>int</code>: The mode to differentiate along. This
+     *                     mode may be an inner function.
+     * @param inner        <code>TensorFunction...</code>: The inner (auxilary)
+     *                     functions, where the index corresponds to a given mode
+     *                     (variable index). Inner functions which are left as
+     *                     <code>null</code> values or which are excluded from the
+     *                     list are treated as independent variables.
+     * @param dependencies <code>List&lt;Set&lt;Integer&gt;&gt;</code>: The list of
+     *                     dependencies for each mode. Every set in the list
+     *                     describes the list of functions that the mode of that
+     *                     index is dependent on.
+     * @param computed     <code>Map&lt;Integer, Map&lt;Integer, TensorFunction&gt;&gt;</code>:
+     *                     The set of previously computed total derivatives.
+     * @return <code>TensorFunction</code>: The calculated function, or the total
+     *         derivative of this <code>TensorFunction</code> instance.
+     */
+    private TensorFunction totalDiffer(int mode, TensorFunction[] inner,
+            List<Set<Integer>> dependencies, Map<Integer, Map<Integer, TensorFunction>> computed) {
+
+        // Sum over the partial derivatives of f with respect to each variable, times
+        // the derivative of each variable with respect to the denominator.
+        TensorFunction f_prime = ZERO;
+        for (int i = 0; i < coeffs.getNumDimensions(); i++) {
+
+            if (coeffs.getDimension(i) < 2) {
+
+                continue;
+            }
+
+            f_prime = f_prime.add(differ(i, 1).multiply(
+                    totalDifferIterate(i, mode, inner, dependencies, computed)));
+        }
+
+        return f_prime;
+    }
+
+    /**
+     * Computes the total derivative of a given mode <code>num</code> with respect
+     * to another mode <code>denom</code> by summing over the products between the
+     * partial derivatives with respect to each of the arguments and the total
+     * derivatives of the arguments with respect to <code>denom</code>.
+     * 
+     * @param num          <code>int</code>: The mode to differentiate.
+     * @param denom        <code>int</code>: The mode to differentiate along. This
+     *                     should be a variable the <code>num</code> mode is
+     *                     dependent on.
+     * @param inner        <code>TensorFunction...</code>: The inner (auxilary)
+     *                     functions, where the index corresponds to a given mode
+     *                     (variable index). Inner functions which are left as
+     *                     <code>null</code> values or which are excluded from the
+     *                     list are treated as independent variables.
+     * @param dependencies <code>List&lt;Set&lt;Integer&gt;&gt;</code>: The list of
+     *                     dependencies for each mode. Every set in the list
+     *                     describes the list of functions that the mode of that
+     *                     index is dependent on.
+     * @param computed     <code>Map&lt;Integer, Map&lt;Integer, TensorFunction&gt;&gt;</code>:
+     *                     The set of previously computed total derivatives.
+     * @return <code>TensorFunction</code>: The calculated function, or the total
+     *         derivative of the <code>num</code> mode with respect to the
+     *         <code>denom</code> mode.
+     */
+    private static TensorFunction totalDifferIterate(int num, int denom, TensorFunction[] inner,
             List<Set<Integer>> dependencies, Map<Integer, Map<Integer, TensorFunction>> computed) {
 
         // dx/dx = 1
@@ -765,19 +900,19 @@ public class TensorFunction {
         // numerator.
         if (dependencies.get(num).isEmpty()) {
 
-            // If they are independent of each other, the derivative is 0.
+            Map<Integer, TensorFunction> computedDenom = computed.computeIfAbsent(denom, _ -> new HashMap<>());
+
+            // If they are independent of each other, the derivative of both is 0.
             if (!dependencies.get(denom).contains(num)) {
 
                 // Mark both derivatives as 0.
-                Map<Integer, TensorFunction> computedDenom = computed.computeIfAbsent(denom, _ -> new HashMap<>());
-                computedDenom.put(num, ZERO);
                 computedNum.put(denom, ZERO);
+                computedDenom.put(num, ZERO);
 
                 return ZERO;
             }
 
-            System.out.println("DENOM SWITCHED");
-            return null;
+            System.out.println("DENOM SWITCHED : d" + num + "/d" + denom + " -> d" + denom + "/d" + num);
 
             // If the denominator is in terms of the numerator, the derivative is the
             // reciprocal of the denominator's derivative with respect to the numerator.
@@ -787,37 +922,21 @@ public class TensorFunction {
             // dx/dy = 1 / (dy/dx)
             // = 1 / (∂y/∂x + ∂y/∂t * dt/dx)
             // If t is independent of x, then dt/dx = 0 and dx/dy = 1 / (∂y/∂x)
-            // TensorFunction f = ONE.divide(totalDifferIterate(denom, num, vars,
-            // dependencies, computed));
-            // computedNum.put(denom, f);
 
-            // return f;
+            // f is guaranteed to exist since it has num as a dependency.
+            TensorFunction f = inner[denom];
+            TensorFunction f_prime = f.totalDiffer(num, inner, dependencies, computed);
+            TensorFunction f_prime_recip = ONE.divide(f_prime);
+            computedNum.put(denom, f_prime_recip);
+            computedDenom.put(num, f_prime);
+
+            return f_prime_recip;
         }
 
-        TensorFunction f = vars[num];
+        TensorFunction f = inner[num];
 
-        TensorFunction f_prime = differChildren(f, denom, vars, dependencies, computed);
+        TensorFunction f_prime = f.totalDiffer(denom, inner, dependencies, computed);
         computedNum.put(denom, f_prime);
-        return f_prime;
-    }
-
-    private static TensorFunction differChildren(TensorFunction f, int mode, TensorFunction[] vars,
-            List<Set<Integer>> dependencies, Map<Integer, Map<Integer, TensorFunction>> computed) {
-
-        // Sum over the partial derivatives of f with respect to each variable, times
-        // the derivative of each variable with respect to the denominator.
-        TensorFunction f_prime = ZERO;
-        for (int i = 0; i < f.coeffs.getNumDimensions(); i++) {
-
-            if (f.coeffs.getDimension(i) < 2) {
-
-                continue;
-            }
-
-            f_prime = f_prime.add(f.differ(i, 1).multiply(
-                    totalDifferIterate(i, mode, vars, dependencies, computed)));
-        }
-
         return f_prime;
     }
 
@@ -831,7 +950,10 @@ public class TensorFunction {
      */
     public static final Matrix differMat(int n, int k) {
 
+        // Assume k fewer rows than degrees + 1.
         int rows = n + 1 - k;
+
+        // Assume 1 more column than degrees.
         int cols = n + 1;
 
         double[] data = new double[rows * cols];
@@ -839,11 +961,13 @@ public class TensorFunction {
 
             double num = 1.0;
 
+            // Adjust for the compound nature of the kth derivative.
             for (int j = 0; j < k; j++) {
 
                 num *= (i + j + 1);
             }
 
+            // Adjust the horizontal shift.
             data[i * cols + i + k] = num;
         }
 
@@ -851,11 +975,11 @@ public class TensorFunction {
     }
 
     /**
-     * Calculates the nth integral of this <code>TensorFunction</code> instance
-     * along the given mode
+     * Calculates the nth integral of this <code>TensorFunction</code> instance with
+     * respect to a given mode.
      * 
-     * @param dim <code>int</code>: The mode to integrate along.
-     * @param n   <code>int</code>: The order of the integral.
+     * @param mode <code>int</code>: The mode to integrate along.
+     * @param n    <code>int</code>: The order of the integral.
      * @return <code>TensorFunction</code>: The calculated function.
      */
     public final TensorFunction integ(int mode, int n) {
@@ -883,7 +1007,10 @@ public class TensorFunction {
      */
     public static final Matrix integMat(int n, int k) {
 
+        // Assume k more rows than degrees + 1.
         int rows = n + 1 + k;
+
+        // Assume 1 more column than degrees.
         int cols = n + 1;
 
         double[] data = new double[rows * cols];
@@ -893,9 +1020,11 @@ public class TensorFunction {
 
             for (int j = 0; j < k; j++) {
 
+                // Adjust for the compound nature of the kth integral.
                 num *= (i + j + 1);
             }
 
+            // Adjust the vertical shift.
             data[i + cols * (i + k)] = 1.0 / num;
         }
 

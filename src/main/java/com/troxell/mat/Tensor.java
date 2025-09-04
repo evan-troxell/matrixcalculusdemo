@@ -15,14 +15,26 @@ public final class Tensor {
      */
     private final int[] dimensions;
 
+    /**
+     * Retrieves the number of dimensions in this <code>Tensor</code> instance.
+     * 
+     * @return <code>int</code>: The length of the <code>dimensions</code> field of
+     *         this <code>Tensor</code> instance.
+     */
     public final int getNumDimensions() {
 
         return dimensions.length;
     }
 
-    public final int getDimension(int i) {
+    /**
+     * Retrieves the dimensions along a specific mode of this <code>Tensor</code>
+     * instance.
+     * 
+     * @return <code>int</code>: The retrieved dimension.
+     */
+    public final int getDimension(int mode) {
 
-        return dimensions[i];
+        return dimensions[mode];
     }
 
     /**
@@ -42,14 +54,17 @@ public final class Tensor {
      */
     private final MatNumber[] data;
 
+    /**
+     * Retrieves a number contained within this <code>Tensor</code> instance using a
+     * specific index.
+     * 
+     * @param i <code>int</code>: The index to retrieve using, constructed using
+     *          dimension iteration.
+     * @return <code>MatNumber</code>: The retrieved number.
+     */
     public final MatNumber get(int i) {
 
         return data[i];
-    }
-
-    public final MatNumber get(int[] indices) {
-
-        return get(index(indices, dimensions));
     }
 
     /**
@@ -140,6 +155,12 @@ public final class Tensor {
         return new Tensor(newDims, newData);
     }
 
+    /**
+     * Multiplies this <code>Tensor</code> instance by a scalar value.
+     * 
+     * @param scalar <code>MatNumber</code>: The scalar to multiply by.
+     * @return <code>Tensor</code>: The scaled tensor.
+     */
     public final Tensor multiply(MatNumber scalar) {
 
         MatNumber[] newData = new MatNumber[data.length];
@@ -151,6 +172,12 @@ public final class Tensor {
         return new Tensor(dimensions, newData);
     }
 
+    /**
+     * Divices this <code>Tensor</code> instance by a scalar value.
+     * 
+     * @param scalar <code>MatNumber</code>: The scalar to divide by.
+     * @return <code>Tensor</code>: The scaled tensor.
+     */
     public final Tensor divide(MatNumber scalar) {
 
         MatNumber[] newData = new MatNumber[data.length];
