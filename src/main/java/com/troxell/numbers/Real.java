@@ -105,6 +105,28 @@ public final class Real implements MatNumber {
         return Math.abs(value);
     }
 
+    @Override
+    public final int hashCode() {
+
+        return Double.hashCode(value);
+    }
+
+    @Override
+    public final boolean equals(Object obj) {
+
+        if (this == obj) {
+
+            return true;
+        }
+
+        if (obj instanceof MatNumber num) {
+
+            return value == num.real() && num.imag() == 0.0;
+        }
+
+        return false;
+    }
+
     /**
      * Retrieves the string representation of this <code>Real</code> instance.
      * 

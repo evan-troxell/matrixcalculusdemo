@@ -500,11 +500,11 @@ public final class Tensor {
      * 
      * @return <code>String</code>: The string representation of this
      *         <code>Tensor</code> instance in the following form:<br>
-     *         <code>Tensor[dimensions=[3, 3], data=[a, b, c, d, e, f, g, h, i]]</code>.
+     *         <code>Dimensions: [3, 3], Data: [a, b, c, d, e, f, g, h, i]]</code>.
      */
     @Override
     public final String toString() {
 
-        return "Tensor(dimensions=" + Arrays.toString(dimensions) + ", data=" + Arrays.toString(data) + ")";
+        return "Dimensions: " + Arrays.toString(dimensions) + ", Data: " + Arrays.toString(data);
     }
 }

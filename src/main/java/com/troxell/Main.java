@@ -10,37 +10,33 @@ public final class Main {
 
         System.out.println("Hello world!");
 
-        // TensorFunction f = new TensorFunction(TensorFunction.DERIVATIVES, new int[] {
-        // 10, 10 }, new double[] {
-        // 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        // 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        // 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        // 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        // 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        // 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        // 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        // 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        // 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        // 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
-        // });
+        // w = f(x, y, t) = xyt
+        TensorFunction w = new TensorFunction(new int[] { 2, 2, 1, 2 },
+                0, 0,
+                0, 0,
 
-        // // [0, 0, 0]
-        // // [0, 0, 1]
+                0, 0,
+                0, 1);
+        System.out.println("w(x=1, y=2, t=3) = " + w.apply(1, 2, 0, 3));
 
-        // System.out.println(f.differ(0, 9));
-        // System.out.println(f.differ(1, 9));
-        // System.out.println(f.differ(0, 9).differ(1, 9));
-        // System.out.println(new Matrix(3, 3, 1, 2, 3, 4, 5, 6, 7, 8, 9));
+        // x = x(y, z) = yz
+        TensorFunction x = new TensorFunction(new int[] { 1, 2, 2 },
+                0, 0,
+                0, 1);
+        System.out.println("x(y=2, z=3) = " + x.apply(0, 2, 3));
 
-        TensorFunction f = new TensorFunction(TensorFunction.DERIVATIVES, new int[] { 25 },
-                1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
+        // y = y(t) = t
+        TensorFunction y = new TensorFunction(new int[] { 1, 1, 1, 2 },
+                0, 1);
+        System.out.println("y(t=3) = " + y.apply(0, 0, 0, 3));
 
-        TensorFunction g = new TensorFunction(TensorFunction.COEFFICIENTS, new int[] { 1 },
-                1);
+        // z = z(t) = t
+        TensorFunction z = new TensorFunction(new int[] { 1, 1, 1, 2 },
+                0, 1);
+        System.out.println("z(t=3) = " + z.apply(0, 0, 0, 3));
 
-        TensorFunction h = f.compose(g, 0);
-
-        System.out.println(h);
-        System.out.println(h.apply(2));
+        // dw/dt
+        TensorFunction dw_dt = w.totalDiffer(3, x, y, z);
+        System.out.println(dw_dt.apply(1, 2, 3, 43));
     }
 }

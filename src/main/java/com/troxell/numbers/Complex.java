@@ -95,9 +95,36 @@ public final class Complex implements MatNumber {
         return Math.sqrt(re * re + im * im);
     }
 
+    /**
+     * Calculates the complex conjugate of this <code>Complex</code> instance.
+     * 
+     * @return <code>Complex</code>: The calculated number.
+     */
     public final Complex conjugate() {
 
         return new Complex(re, -im);
+    }
+
+    @Override
+    public final int hashCode() {
+
+        return Double.hashCode(re) ^ Double.hashCode(im);
+    }
+
+    @Override
+    public final boolean equals(Object obj) {
+
+        if (this == obj) {
+
+            return true;
+        }
+
+        if (obj instanceof MatNumber num) {
+
+            return re == num.real() && im == num.imag();
+        }
+
+        return false;
     }
 
     /**

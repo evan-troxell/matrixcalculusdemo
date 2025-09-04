@@ -91,6 +91,9 @@ public interface MatNumber {
     public double abs();
 
     @Override
+    public boolean equals(Object obj);
+
+    @Override
     public String toString();
 
     /**
