@@ -55,6 +55,18 @@ public final class Tensor {
     private final MatNumber[] data;
 
     /**
+     * Retrieves the number of values contained within this <code>Tensor</code>
+     * instance.
+     * 
+     * @return <code>int</code>: The length of the <code>data</code> field of this
+     *         <code>Tensor</code> instance.
+     */
+    public final int size() {
+
+        return data.length;
+    }
+
+    /**
      * Retrieves a number contained within this <code>Tensor</code> instance using a
      * specific index.
      * 
@@ -158,6 +170,23 @@ public final class Tensor {
     /**
      * Multiplies this <code>Tensor</code> instance by a scalar value.
      * 
+     * @param scalar <code>double</code>: The scalar to multiply by.
+     * @return <code>Tensor</code>: The scaled tensor.
+     */
+    public final Tensor multiply(double scalar) {
+
+        MatNumber[] newData = new MatNumber[data.length];
+        for (int i = 0; i < newData.length; i++) {
+
+            newData[i] = data[i].multiply(scalar);
+        }
+
+        return new Tensor(dimensions, newData);
+    }
+
+    /**
+     * Multiplies this <code>Tensor</code> instance by a scalar value.
+     * 
      * @param scalar <code>MatNumber</code>: The scalar to multiply by.
      * @return <code>Tensor</code>: The scaled tensor.
      */
@@ -175,10 +204,37 @@ public final class Tensor {
     /**
      * Divices this <code>Tensor</code> instance by a scalar value.
      * 
+     * @param scalar <code>double</code>: The scalar to divide by.
+     * @return <code>Tensor</code>: The scaled tensor.
+     */
+    public final Tensor divide(double scalar) {
+
+        if (scalar == 0.0) {
+
+            return null;
+        }
+
+        MatNumber[] newData = new MatNumber[data.length];
+        for (int i = 0; i < newData.length; i++) {
+
+            newData[i] = data[i].divide(scalar);
+        }
+
+        return new Tensor(dimensions, newData);
+    }
+
+    /**
+     * Divices this <code>Tensor</code> instance by a scalar value.
+     * 
      * @param scalar <code>MatNumber</code>: The scalar to divide by.
      * @return <code>Tensor</code>: The scaled tensor.
      */
     public final Tensor divide(MatNumber scalar) {
+
+        if (scalar.equals(MatNumber.ZERO)) {
+
+            return null;
+        }
 
         MatNumber[] newData = new MatNumber[data.length];
         for (int i = 0; i < newData.length; i++) {

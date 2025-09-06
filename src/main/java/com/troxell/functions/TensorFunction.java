@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.troxell.MatContext;
 import com.troxell.mat.Matrix;
 import com.troxell.mat.Tensor;
 import com.troxell.mat.Vector;
@@ -18,7 +19,7 @@ import com.troxell.numbers.Real;
  * <code>TensorFunction</code>: A class representing a function defined using
  * its polynomial coefficients as stored in a tensor.
  */
-public class TensorFunction {
+public final class TensorFunction extends MatFunction<MatNumber> {
 
     /**
      * <code>int</code>: An enum constant representing a tensor function formed from
@@ -41,6 +42,20 @@ public class TensorFunction {
      * <code>TensorFunction</code> instance.
      */
     private final Tensor coeffs;
+
+    /**
+     * Retrieves the number of arguments in this <code>TensorFunction</code>
+     * instance.
+     * 
+     * @return <code>int</code>: The number of dimensions in the <code>coeffs</code>
+     *         field of
+     *         this <code>TensorFunction</code> instance.
+     */
+    @Override
+    public final int getNumArgs() {
+
+        return coeffs.getNumDimensions();
+    }
 
     /**
      * Creates a new instance of the <code>TensorFunction</code> class.
@@ -71,6 +86,355 @@ public class TensorFunction {
     public TensorFunction(int[] dimensions, double... coeffs) {
 
         this(COEFFICIENTS, dimensions, coeffs);
+    }
+
+    public static final TensorFunction parse(String definition) {
+
+        String[] components = definition.split("=");
+        if (components.length != 2) {
+
+            return null;
+        }
+
+        return parse(parseDeclaration(components[0]), components[1]);
+    }
+
+    public static final TensorFunction parse(List<String> params, String expression) {
+
+        if (!validateDelimiters(expression)) {
+
+            return null;
+        }
+
+        return parseExpression(params, expression.replaceAll(" ", ""));
+    }
+
+    private static boolean validateDelimiters(String expression) {
+
+        int depth = 0;
+        for (char c : expression.toCharArray()) {
+
+            if (c == '(') {
+
+                depth++;
+            } else if (c == ')') {
+
+                depth--;
+                if (depth < 0) {
+
+                    return false;
+                }
+            }
+        }
+
+        return depth == 0;
+    }
+
+    private static TensorFunction parseExpression(List<String> params, String expression) {
+
+        int length = expression.length();
+
+        ArrayList<Integer> tokenIndices = new ArrayList<>();
+
+        for (int i = 0; i < length; i++) {
+
+            tokenIndices.add(i);
+
+            char c = expression.charAt(i);
+
+            if (c == '(') {
+
+                int depth = 1;
+                while (i < length && depth > 0) {
+
+                    c = expression.charAt(i + 1);
+                    if (c == '(') {
+
+                        depth++;
+                    }
+                    if (c == ')') {
+
+                        depth--;
+                    }
+                    i++;
+                }
+
+            } else if (String.valueOf(c).matches(LEADING_PARAM_CHAR_PATTERN)) {
+
+                while (i + 1 < length
+                        && String.valueOf(expression.charAt(i + 1)).matches(TRAILING_PARAM_CHAR_PATTERN)) {
+
+                    i++;
+                }
+
+                if (i + 1 < length && expression.charAt(i + 1) == '^') {
+
+                    i++;
+
+                    int start = i;
+
+                    while (i + 1 < length && '0' <= expression.charAt(i + 1) && expression.charAt(i + 1) <= '9') {
+
+                        i++;
+                    }
+
+                    if (i == start) {
+
+                        return null;
+                    }
+                }
+            } else if ('0' <= c && c <= '9') {
+
+                boolean decimal = false;
+
+                while (i + 1 < length && (('0' <= expression.charAt(i + 1) && expression.charAt(i + 1) <= '9')
+                        || (expression.charAt(i + 1) == '.' && !decimal))) {
+
+                    if (expression.charAt(i + 1) == '.') {
+
+                        decimal = true;
+                    }
+                    i++;
+                }
+            } else if (c != '+' && c != '-' && c != '*') {
+
+                return null;
+            }
+        }
+
+        ArrayList<String> tokens = new ArrayList<>(tokenIndices.size());
+        tokenIndices.add(length);
+
+        for (int i = 0; i < tokenIndices.size() - 1; i++) {
+
+            tokens.add(expression.substring(tokenIndices.get(i), tokenIndices.get(i + 1)));
+        }
+
+        if (tokens.isEmpty()) {
+
+            return null;
+        }
+
+        if (tokens.getFirst().equals("*")) {
+
+            return null;
+        }
+
+        if (tokens.getFirst().equals("+") || tokens.getFirst().equals("-")) {
+
+            tokens.addFirst("0");
+        }
+
+        String prev = tokens.getFirst();
+
+        for (int i = 1; i < tokens.size(); i++) {
+
+            String next = tokens.get(i);
+
+            if (!isOperator(prev) || !isOperator(next)) {
+
+                if (!isOperator(prev) && !isOperator(next)) {
+
+                    tokens.add(i, "*");
+                    i++;
+                }
+
+                prev = next;
+                continue;
+            }
+
+            // *+, *-, **, +*, -*, or ** -> error
+            if (next.equals("*") || prev.equals("*") || next.equals("*-") || prev.equals("*-")) {
+
+                if (next.equals("-") && prev.equals("*")) {
+
+                    tokens.set(i, "*-");
+                    tokens.remove(i - 1);
+                    i--;
+                    prev = "*-";
+                    continue;
+                }
+                return null;
+            }
+
+            // ++ or -+ -> + or -
+            if (next.equals("+")) {
+
+                tokens.remove(i);
+                i--;
+                continue;
+            }
+
+            // +- -> -
+            if (prev.equals("+")) {
+
+                tokens.remove(i - 1);
+                i--;
+                prev = next;
+                continue;
+            }
+
+            // -- -> +
+
+            tokens.set(i, "+");
+            tokens.remove(i - 1);
+            i--;
+            prev = "+";
+        }
+
+        if (isOperator(prev)) {
+
+            return null;
+        }
+
+        TensorFunction result = toExpression(params, tokens.getFirst());
+        if (result == null) {
+
+            return null;
+        }
+
+        for (int i = 1; i < tokens.size(); i += 2) {
+
+            String operator = tokens.get(i);
+            boolean isNegative = operator.equals("-") || operator.equals("*-");
+
+            operator = switch (operator) {
+
+                case "-" -> "+";
+                case "*-" -> "*";
+                default -> operator;
+            };
+
+            TensorFunction next = toExpression(params, tokens.get(i + 1));
+            if (next == null) {
+
+                return null;
+            }
+
+            if (operator.equals("*")) {
+
+                if (isNegative) {
+
+                    next = next.multiply(MatNumber.NEGATIVE);
+                }
+
+                result = result.multiply(next);
+                continue;
+            }
+
+            while (i + 2 < tokens.size() && (tokens.get(i + 2).equals("*") || tokens.get(i + 2).equals("*-"))) {
+
+                i += 2;
+                if (tokens.get(i).equals("*-")) {
+
+                    isNegative = !isNegative;
+                }
+
+                TensorFunction next2 = toExpression(params, tokens.get(i + 1));
+                if (next2 == null) {
+
+                    return null;
+                }
+
+                next = next.multiply(next2);
+            }
+
+            result = isNegative ? result.subtract(next) : result.add(next);
+        }
+
+        return result;
+    }
+
+    private static boolean isOperator(String c) {
+
+        return c.equals("+") || c.equals("-") || c.equals("*") || c.equals("*-");
+    }
+
+    private static TensorFunction toExpression(List<String> params, String s) {
+
+        if (s.startsWith("(")) {
+
+            return parseExpression(params, s.substring(1, s.length() - 1));
+        }
+
+        if ('0' <= s.charAt(0) && s.charAt(0) <= '9') {
+
+            double num = Double.parseDouble(s);
+
+            return new TensorFunction(new int[0], num);
+        }
+
+        return toFunction(params, s);
+    }
+
+    private static TensorFunction toFunction(List<String> params, String s) {
+
+        String[] components = s.split("\\^");
+        s = components[0];
+        int exp = components.length > 1 ? Integer.parseInt(components[1]) : 1;
+
+        HashMap<Integer, Integer> powers = new HashMap<>();
+
+        int last = -1;
+
+        if (params.contains(s)) {
+
+            last = params.indexOf(s);
+            powers.put(last, 1);
+        } else {
+
+            int start = 0;
+
+            for (int i = 0; i < s.length(); i++) {
+
+                String val = s.substring(start, i + 1);
+
+                if (params.contains(val) || val.equals("i")) {
+
+                    last = params.indexOf(val);
+
+                    if (powers.containsKey(last)) {
+
+                        powers.compute(last, (_, v) -> v + 1);
+                    } else {
+
+                        powers.put(last, 1);
+                    }
+                    start = i + 1;
+                }
+            }
+
+            if (start != s.length()) {
+
+                return null;
+            }
+        }
+
+        powers.compute(last, (_, v) -> v + exp - 1);
+
+        int[] dimensions = new int[params.size()];
+        for (int i = 0; i < dimensions.length; i++) {
+
+            dimensions[i] = powers.getOrDefault(i, 0) + 1;
+        }
+
+        int size = Tensor.product(dimensions);
+        MatNumber[] data = new MatNumber[size];
+        Arrays.fill(data, MatNumber.ZERO);
+
+        int im_power = powers.getOrDefault(-1, 0);
+        MatNumber coeff = switch (im_power % 4) {
+
+            case 1 -> MatNumber.IMAG;
+            case 2 -> MatNumber.NEGATIVE;
+            case 3 -> MatNumber.NEGATIVE_IMAG;
+            default -> MatNumber.ONE;
+        };
+
+        data[size - 1] = coeff;
+        TensorFunction func = new TensorFunction(dimensions, data);
+
+        return func;
     }
 
     /**
@@ -110,6 +474,37 @@ public class TensorFunction {
     /**
      * Creates a new instance of the <code>TensorFunction</code> class.
      * 
+     * @param mode       <code>int</code>: The coefficient mode type, either
+     *                   <code>COEFFICIENTS</code> or <code>DERIVATIVES</code>.
+     * @param dimensions <code>int[]</code>: The dimensions of this
+     *                   <code>TensorFunction</code> instance.
+     * @param coeffs     <code>String...</code>: The coefficient list of this
+     *                   <code>TensorFunction</code> instance.
+     */
+    public TensorFunction(int mode, int[] dimensions, String... coeffs) {
+
+        this(mode, dimensions, Arrays.stream(coeffs)
+                .map(MatNumber::number)
+                .toArray(MatNumber[]::new));
+    }
+
+    /**
+     * Creates a new instance of the <code>TensorFunction</code> class using
+     * coefficients.
+     * 
+     * @param dimensions <code>int[]</code>: The dimensions of this
+     *                   <code>TensorFunction</code> instance.
+     * @param coeffs     <code>String...</code>: The coefficient list of this
+     *                   <code>TensorFunction</code> instance.
+     */
+    public TensorFunction(int[] dimensions, String... coeffs) {
+
+        this(COEFFICIENTS, dimensions, coeffs);
+    }
+
+    /**
+     * Creates a new instance of the <code>TensorFunction</code> class.
+     * 
      * @param mode   <code>int</code>: The coefficient mode type, either
      *               <code>COEFFICIENTS</code> or <code>DERIVATIVES</code>.
      * @param tensor <code>Tensor</code>: The coefficient tensor of this
@@ -120,37 +515,114 @@ public class TensorFunction {
         coeffs = tensor;
     }
 
+    public static final TensorFunction exp(TensorFunction function, int n) {
+
+        TensorFunction f = ZERO;
+
+        TensorFunction pow = ONE;
+
+        for (int i = 0; i < n; i++) {
+
+            f = f.add(pow);
+
+            // Add additional factors x/1, x/2, ... , x/n
+            pow = pow.multiply(function.divide(new Real(i + 1)));
+        }
+
+        return f;
+    }
+
+    public static final TensorFunction pow(TensorFunction function, double p, int h, double center) {
+
+        if (p == 0.0) {
+
+            return ONE;
+        }
+
+        if (p < 0) {
+
+            return null;// recip(pow(function, -p, h, center));
+        }
+
+        if (p % 1.0 == 0.0) {
+
+            return pow(function, (int) p);
+        }
+
+        TensorFunction sum = ZERO;
+
+        double prev = Math.pow(center, p);
+
+        TensorFunction pow = ONE;
+
+        double pfact_pmnfact = 1.0;
+
+        for (int n = 0; n < h; n++) {
+
+            System.out.println(n + " : " + pfact_pmnfact);
+
+            double inner = 0.0;
+            double innerCoeff = pfact_pmnfact;
+            for (int k = 0; k < h - n; k++) {
+
+                inner += innerCoeff;
+                System.out.println("   " + k + " : " + innerCoeff);
+
+                // (-1)^k * (p-n)! / (k! * (p-n-k))!
+                innerCoeff *= -(p - n - k) / (k + 1);
+            }
+
+            sum = sum.add(pow.multiply(inner * prev));
+
+            // x^n
+            pow = pow.multiply(function);
+
+            // 1/(a^n*n!)
+            prev /= center * (n + 1);
+
+            // p!/(p-n)!
+            pfact_pmnfact *= (p - n);
+        }
+
+        return sum;
+    }
+
+    public static final TensorFunction pow(TensorFunction function, int degree) {
+
+        return function.pow(degree);
+    }
+
     /**
      * Iterates along each dimension of a tensor to calculate the coefficients from
      * the derivatives.
      * 
-     * @param dim         <code>int</code>: The current dimension.
+     * @param mode        <code>int</code>: The current mode.
      * @param coefficient <code>MatNumber</code>: The current coefficient.
      * @param index       <code>int</code>: The current index in the coefficient
      *                    array.
      * @param indCoeff    <int</code>: The index coefficient for the current
-     *                    dimension.
+     *                    mode.
      * @param dimensions  <int[]</code>: The dimensions to iterate over.
      * @param coeffs      <code>MatNumber[]</code>: The coefficient array to fill.
      */
-    private static void factorIterate(int dim, MatNumber coefficient, int index, int indCoeff, int[] dimensions,
+    private static void factorIterate(int mode, MatNumber coefficient, int index, int indCoeff, int[] dimensions,
             MatNumber[] coeffs) {
 
-        // If the dimension is out of bounds, set the coefficient.
-        if (dim >= dimensions.length) {
+        // If the mode is out of bounds, set the coefficient.
+        if (mode >= dimensions.length) {
 
             coeffs[index] = coeffs[index].multiply(coefficient);
 
             return;
         }
 
-        int length = dimensions[dim];
+        int length = dimensions[mode];
 
         // Iterate over each coefficient in this dimension.
         for (int i = 0; i < length; i++) {
 
             // Recurse to the next dimension.
-            factorIterate(dim + 1, coefficient, index + i * indCoeff, indCoeff * length, dimensions, coeffs);
+            factorIterate(mode + 1, coefficient, index + i * indCoeff, indCoeff * length, dimensions, coeffs);
 
             // Divide the coefficient by the next factor.
             coefficient = coefficient.divide(i + 1);
@@ -163,6 +635,7 @@ public class TensorFunction {
      * @param args <code>double...</code>: The arguments to apply.
      * @return <code>MatNumber</code>: The resulting value.
      */
+    @Override
     public final MatNumber apply(double... args) {
 
         return apply(new Vector(args));
@@ -174,6 +647,7 @@ public class TensorFunction {
      * @param args <code>MatNumber...</code>: The arguments to apply.
      * @return <code>MatNumber</code>: The resulting value.
      */
+    @Override
     public final MatNumber apply(MatNumber... args) {
 
         return apply(new Vector(args));
@@ -185,6 +659,7 @@ public class TensorFunction {
      * @param args <code>Vector</code>: The arguments to apply.
      * @return <code>MatNumber</code>: The resulting value.
      */
+    @Override
     public final MatNumber apply(Vector args) {
 
         int[] dimensions = coeffs.getDimensions();
@@ -232,31 +707,31 @@ public class TensorFunction {
      * Iterates along each dimension of a tensor to calculate the exponents from a
      * set of arguments.
      * 
-     * @param dim         <code>int</code>: The current dimension.
+     * @param mode        <code>int</code>: The current mode.
      * @param coefficient <code>MatNumber</code>: The current coefficient.
      * @param args        <code>Vector</code>: The arguments to apply.
      * @param index       <code>int</code>: The current index in the coefficient
      *                    array.
      * @param indCoeff    <int</code>: The index coefficient for the current
-     *                    dimension.
+     *                    mode.
      * @param dimensions  <int[]</code>: The dimensions to iterate over.
      * @param coeffs      <code>MatNumber[]</code>: The coefficient array to fill.
      */
-    private static void expIterate(int dim, MatNumber coeff, Vector args, int index, int indCoeff, int[] dimensions,
+    private static void expIterate(int mode, MatNumber coeff, Vector args, int index, int indCoeff, int[] dimensions,
             MatNumber[] coeffs) {
 
-        if (dim >= dimensions.length) {
+        if (mode >= dimensions.length) {
 
             coeffs[index] = coeff;
             return;
         }
 
-        MatNumber pow = args.get(dim);
-        int length = dimensions[dim];
+        MatNumber pow = args.get(mode);
+        int length = dimensions[mode];
 
         for (int i = 0; i < length; i++) {
 
-            expIterate(dim + 1, coeff, args, index + i * indCoeff, indCoeff * length, dimensions, coeffs);
+            expIterate(mode + 1, coeff, args, index + i * indCoeff, indCoeff * length, dimensions, coeffs);
             coeff = coeff.multiply(pow);
         }
     }
@@ -293,10 +768,37 @@ public class TensorFunction {
      * @param function <code>TensorFunction</code>: The function to multiply by.
      * @return <code>TensorFunction</code>: The calculated function.
      */
+    @Override
     public final TensorFunction multiply(TensorFunction function) {
 
         Tensor p = multiply(this.coeffs, function.coeffs);
         return new TensorFunction(p);
+    }
+
+    /**
+     * Computes the product between this <code>TensorFunction</code> instance and a
+     * scalar.
+     * 
+     * @param scalar <code>MatNumber</code>: The scalar to multiply by.
+     * @return <code>TensorFunction</code>: The calculated function.
+     */
+    @Override
+    public final TensorFunction multiply(MatNumber scalar) {
+
+        return new TensorFunction(coeffs.multiply(scalar));
+    }
+
+    /**
+     * Computes the product between this <code>TensorFunction</code> instance and a
+     * scalar.
+     * 
+     * @param scalar <code>double</code>: The scalar to multiply by.
+     * @return <code>TensorFunction</code>: The calculated function.
+     */
+    @Override
+    public final TensorFunction multiply(double scalar) {
+
+        return new TensorFunction(coeffs.multiply(scalar));
     }
 
     /**
@@ -363,7 +865,7 @@ public class TensorFunction {
     /**
      * Iterates through the first tensor in polynomial multiplication.
      * 
-     * @param dim         <code>int</code>: The current dimension.
+     * @param mode        <code>int</code>: The current mode.
      * @param first       <code>Tensor</code>: The first tensor.
      * @param indexOld    <code>int</code>: The current index in the first tensor.
      * @param indCoeffOld <code>int</code>: The index coefficient for the first
@@ -376,10 +878,10 @@ public class TensorFunction {
      *                    the end of
      *                    iteration in the first tensor.
      */
-    private static void multiplyIterateFirst(int dim, Tensor first, int indexOld, int indCoeffOld, int[] newDims,
+    private static void multiplyIterateFirst(int mode, Tensor first, int indexOld, int indCoeffOld, int[] newDims,
             int indexNew, int indCoeffNew, MultiplyConsumer p) {
 
-        if (dim >= first.getNumDimensions()) {
+        if (mode >= first.getNumDimensions()) {
 
             MatNumber coeff = first.get(indexOld);
             if (!coeff.equals(MatNumber.ZERO)) {
@@ -390,12 +892,12 @@ public class TensorFunction {
             return;
         }
 
-        int oldLength = first.getDimension(dim);
-        int newLength = newDims[dim];
+        int oldLength = first.getDimension(mode);
+        int newLength = newDims[mode];
 
         for (int i = 0; i < oldLength; i++) {
 
-            multiplyIterateFirst(dim + 1, first, indexOld + i * indCoeffOld, indCoeffOld * oldLength, newDims,
+            multiplyIterateFirst(mode + 1, first, indexOld + i * indCoeffOld, indCoeffOld * oldLength, newDims,
                     indexNew + i * indCoeffNew, indCoeffNew * newLength, p);
         }
     }
@@ -403,7 +905,7 @@ public class TensorFunction {
     /**
      * Iterates through the second tensor in polynomial multiplication.
      * 
-     * @param dim         <code>int</code>: The current dimension.
+     * @param mode        <code>int</code>: The current mode.
      * @param coeff       <code>MatNumber</code>: The coefficient from the first
      *                    tensor.
      * @param second      <code>Tensor</code>: The second tensor.
@@ -417,10 +919,10 @@ public class TensorFunction {
      * @param data        <code>MatNumber[]</code>: The data array of the new
      *                    tensor.
      */
-    private static void multiplyIterateSecond(int dim, MatNumber coeff, Tensor second, int indexOld, int indCoeffOld,
+    private static void multiplyIterateSecond(int mode, MatNumber coeff, Tensor second, int indexOld, int indCoeffOld,
             int[] newDims, int indexNew, int indCoeffNew, MatNumber[] data) {
 
-        if (dim >= second.getNumDimensions()) {
+        if (mode >= second.getNumDimensions()) {
 
             coeff = coeff.multiply(second.get(indexOld));
 
@@ -432,11 +934,11 @@ public class TensorFunction {
             return;
         }
 
-        for (int i = 0; i < second.getDimension(dim); i++) {
+        for (int i = 0; i < second.getDimension(mode); i++) {
 
-            multiplyIterateSecond(dim + 1, coeff, second, indexOld + i * indCoeffOld,
-                    indCoeffOld * second.getDimension(dim), newDims,
-                    indexNew + i * indCoeffNew, indCoeffNew * newDims[dim], data);
+            multiplyIterateSecond(mode + 1, coeff, second, indexOld + i * indCoeffOld,
+                    indCoeffOld * second.getDimension(mode), newDims,
+                    indexNew + i * indCoeffNew, indCoeffNew * newDims[mode], data);
 
         }
     }
@@ -453,7 +955,7 @@ public class TensorFunction {
 
             if (n == 0) {
 
-                int[] dims = new int[coeffs.getNumDimensions()];
+                int[] dims = new int[getNumArgs()];
                 Arrays.fill(dims, 1);
                 return new TensorFunction(new Tensor(dims, 1));
             }
@@ -477,10 +979,37 @@ public class TensorFunction {
      * @param function <code>TensorFunction</code>: The function to divide by.
      * @return <code>TensorFunction</code>: The calculated function.
      */
+    @Override
     public final TensorFunction divide(TensorFunction function) {
 
         // TODO: Implement divison.
         return null;
+    }
+
+    /**
+     * Computes the quotient between this <code>TensorFunction</code> instance and a
+     * scalar.
+     * 
+     * @param scalar <code>double</code>: The scalar to divide by.
+     * @return <code>TensorFunction</code>: The calculated function.
+     */
+    @Override
+    public final TensorFunction divide(double scalar) {
+
+        return new TensorFunction(coeffs.divide(scalar));
+    }
+
+    /**
+     * Computes the quotient between this <code>TensorFunction</code> instance and a
+     * scalar.
+     * 
+     * @param scalar <code>MatNumber</code>: The scalar to divide by.
+     * @return <code>TensorFunction</code>: The calculated function.
+     */
+    @Override
+    public final TensorFunction divide(MatNumber scalar) {
+
+        return new TensorFunction(coeffs.divide(scalar));
     }
 
     /**
@@ -494,7 +1023,7 @@ public class TensorFunction {
     public final TensorFunction compose(TensorFunction function, int mode) {
 
         // If the composition variable is out of bounds, return null.
-        if (mode < 0 || mode >= coeffs.getNumDimensions()) {
+        if (mode < 0 || mode >= getNumArgs()) {
 
             return null;
         }
@@ -625,7 +1154,7 @@ public class TensorFunction {
     /**
      * Iterates through the second tensor in polynomial composition.
      * 
-     * @param dim         <code>int</code>: The current dimension.
+     * @param mode        <code>int</code>: The current mode.
      * @param coeff       <code>MatNumber</code>: The coefficient from the first
      *                    tensor.
      * @param second      <code>Tensor</code>: The second tensor.
@@ -639,21 +1168,21 @@ public class TensorFunction {
      * @param data        <code>MatNumber[]</code>: The data array of the new
      *                    tensor.
      */
-    private static void composeSecondIterate(int dim, MatNumber coeff, Tensor second, int indexOld, int indCoeffOld,
+    private static void composeSecondIterate(int mode, MatNumber coeff, Tensor second, int indexOld, int indCoeffOld,
             int[] newDims, int indexNew, int indCoeffNew, MatNumber[] data) {
 
-        if (dim >= second.getNumDimensions()) {
+        if (mode >= second.getNumDimensions()) {
 
             data[indexNew] = data[indexNew].add(second.get(indexOld).multiply(coeff));
             return;
         }
 
-        int oldLength = second.getDimension(dim);
-        int newLength = newDims[dim];
+        int oldLength = second.getDimension(mode);
+        int newLength = newDims[mode];
 
         for (int i = 0; i < oldLength; i++) {
 
-            composeSecondIterate(dim + 1, coeff, second, indexOld + i * indCoeffOld, indCoeffOld * oldLength, newDims,
+            composeSecondIterate(mode + 1, coeff, second, indexOld + i * indCoeffOld, indCoeffOld * oldLength, newDims,
                     indexNew + i * indCoeffNew, indCoeffNew * newLength, data);
         }
     }
@@ -666,19 +1195,42 @@ public class TensorFunction {
      * @param n    <code>int</code>: The order of the derivative.
      * @return <code>TensorFunction</code>: The calculated function.
      */
+    @Override
     public final TensorFunction differ(int mode, int n) {
 
         int[] dimensions = coeffs.getDimensions();
 
         if (mode >= dimensions.length) {
 
-            return null;
+            return ZERO;
         }
 
         int degree = dimensions[mode] - 1;
+        if (degree < 1) {
+
+            return ZERO;
+        }
 
         Matrix D = differMat(degree, n);
         return new TensorFunction(Tensor.modeProduct(D, coeffs, mode));
+    }
+
+    /**
+     * Calculates the gradient of this <code>TensorFunction</code> instance.
+     * 
+     * @return <code>VectorFunction</code>: The calculated vector-valued function
+     *         representing the gradient.
+     */
+    public final VectorFunction gradient() {
+
+        TensorFunction[] derivs = new TensorFunction[getNumArgs()];
+
+        for (int i = 0; i < derivs.length; i++) {
+
+            derivs[i] = differ(i, 1);
+        }
+
+        return new VectorFunction(derivs);
     }
 
     /**
@@ -710,7 +1262,7 @@ public class TensorFunction {
             if (func != null) {
 
                 // Dimensions which are not constant are dependencies.
-                for (int dim = 0; dim < func.coeffs.getNumDimensions(); dim++) {
+                for (int dim = 0; dim < func.getNumArgs(); dim++) {
 
                     if (func.coeffs.getDimension(dim) > 1) {
 
@@ -839,21 +1391,23 @@ public class TensorFunction {
     private TensorFunction totalDiffer(int mode, TensorFunction[] inner,
             List<Set<Integer>> dependencies, Map<Integer, Map<Integer, TensorFunction>> computed) {
 
-        // Sum over the partial derivatives of f with respect to each variable, times
-        // the derivative of each variable with respect to the denominator.
-        TensorFunction f_prime = ZERO;
-        for (int i = 0; i < coeffs.getNumDimensions(); i++) {
+        VectorFunction gradient = gradient();
+
+        TensorFunction[] tangentFuncs = new TensorFunction[getNumArgs()];
+        for (int i = 0; i < tangentFuncs.length; i++) {
 
             if (coeffs.getDimension(i) < 2) {
 
+                tangentFuncs[i] = ZERO;
                 continue;
             }
 
-            f_prime = f_prime.add(differ(i, 1).multiply(
-                    totalDifferIterate(i, mode, inner, dependencies, computed)));
+            tangentFuncs[i] = totalDifferIterate(i, mode, inner, dependencies, computed);
         }
 
-        return f_prime;
+        VectorFunction tangent = new VectorFunction(tangentFuncs);
+
+        return gradient.dot(tangent);
     }
 
     /**
@@ -982,6 +1536,7 @@ public class TensorFunction {
      * @param n    <code>int</code>: The order of the integral.
      * @return <code>TensorFunction</code>: The calculated function.
      */
+    @Override
     public final TensorFunction integ(int mode, int n) {
 
         int[] dimensions = coeffs.getDimensions();
@@ -1033,15 +1588,101 @@ public class TensorFunction {
 
     /**
      * Retrieves the string representation of this <code>TensorFunction</code>
-     * instance.
+     * instance as a variable expression
      * 
      * @return <code>String</code>: The string representation of this
      *         <code>TensorFunction</code> instance in the following form:<br>
-     *         <code>Dimensions: [3, 3], Data: [a, b, c, d, e, f, g, h, i]]</code>.
+     *         <code>a + bx + cy + dz + exyz</code>.
      */
     @Override
     public final String toString() {
 
-        return coeffs.toString();
+        int indCoeff = coeffs.size();
+
+        String s = stringIterate(getNumArgs() - 1, 0, indCoeff, "").replace("+ -", "- ");
+
+        if (s.endsWith(" + ")) {
+
+            s = s.substring(0, s.length() - 3);
+        } else {
+
+            s += "0";
+        }
+
+        return s;
+    }
+
+    /**
+     * Iterates along each dimension of this <code>TensorFunction</code> instance to
+     * compose into a function expression.
+     * 
+     * @param mode     <code>int</code>: The current mode.
+     * @param index    <code>int</cdoe>: The current index.
+     * @param indCoeff <code>int</code>: The index coefficient.
+     * @param s        <code>String</code>: The current variable expression.
+     * @return <code>String</code>: The sum of string expressions in the current
+     *         mode.
+     */
+    public final String stringIterate(int mode, int index, int indCoeff, String s) {
+
+        if (mode < 0) {
+
+            MatNumber num = coeffs.get(index);
+
+            if (num.equals(MatNumber.ZERO)) {
+
+                return "";
+            }
+
+            if (!s.isEmpty()) {
+
+                if (num.equals(MatNumber.NEGATIVE)) {
+
+                    s = '-' + s;
+                } else if (!num.equals(MatNumber.ONE)) {
+
+                    if (num.real() == 0.0 || num.imag() == 0.0) {
+
+                        s = num + s;
+                    } else {
+
+                        if (num.real() > 0) {
+
+                            s = "(" + num + ")" + s;
+                        } else {
+
+                            s = "-(" + num.multiply(-1) + ")" + s;
+                        }
+                    }
+                }
+            } else {
+
+                s = num.toString();
+            }
+
+            return s + " + ";
+        }
+
+        int length = coeffs.getDimension(mode);
+        indCoeff /= length;
+
+        String result = "";
+        String v = MatContext.getVar(mode);
+
+        String newS;
+
+        for (int i = 0; i < length; i++) {
+
+            newS = switch (i) {
+
+                case 0 -> s;
+                case 1 -> v + s;
+                default -> v + '^' + i + s;
+            };
+
+            result += stringIterate(mode - 1, index + i * indCoeff, indCoeff, newS);
+        }
+
+        return result;
     }
 }

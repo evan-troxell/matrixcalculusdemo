@@ -1,10 +1,12 @@
 package com.troxell.numbers;
 
+import java.text.DecimalFormat;
+
 /**
  * <code>Complex</code>: A class representing a complex number of the form
  * <code>a + bi/code>.
  */
-public final class Complex implements MatNumber {
+public final class Complex extends MatNumber {
 
     /**
      * <code>double</code>: The real component of this <code>Complex</code>
@@ -130,6 +132,8 @@ public final class Complex implements MatNumber {
     /**
      * Retrieves the string representation of this <code>Complex</code> instance.
      * 
+     * @param formatter <code>DecimalFormat</code>: The pattern used to format this
+     *                  <code>Complex</code> instance.
      * @return <code>String</code>: The string representation of this
      *         <code>Complex</code> instance in one of the following forms:
      *         <ul>
@@ -140,20 +144,20 @@ public final class Complex implements MatNumber {
      *         </ul>
      */
     @Override
-    public final String toString() {
+    public final String toString(DecimalFormat formatter) {
 
         if (im == 0.0) {
 
-            return String.format("%f", re);
+            return formatter.format(re);
         } else if (re == 0.0) {
 
-            return String.format("%fi", im);
+            return (im == 1) ? "i" : ((im == -1) ? "-i" : formatter.format(im) + "i");
         } else if (im < 0.0) {
 
-            return String.format("%f - %.4fi", re, -im);
+            return formatter.format(re) + " - " + formatter.format(-im) + "i";
         } else {
 
-            return String.format("%f + %fi", re, im);
+            return formatter.format(re) + " + " + formatter.format(im) + "i";
         }
     }
 }

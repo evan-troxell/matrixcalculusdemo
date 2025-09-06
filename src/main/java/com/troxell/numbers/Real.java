@@ -1,9 +1,11 @@
 package com.troxell.numbers;
 
+import java.text.DecimalFormat;
+
 /**
  * <code>Real</code>: A class representing a real number.
  */
-public final class Real implements MatNumber {
+public final class Real extends MatNumber {
 
     /**
      * <code>double</code>: The value of this <code>Real</code> instance.
@@ -130,13 +132,15 @@ public final class Real implements MatNumber {
     /**
      * Retrieves the string representation of this <code>Real</code> instance.
      * 
+     * @param formatter <code>DecimalFormat</code>: The pattern used to format this
+     *                  <code>Real</code> instance.
      * @return <code>String</code>: The string representation of this
      *         <code>Real</code> instance.
      */
     @Override
-    public String toString() {
+    public String toString(DecimalFormat formatter) {
 
-        return Double.toString(value);
+        return formatter.format(value);
     }
 
 }
